@@ -30,16 +30,15 @@ The default value for each of these (at both compile and in this library)
 is 32, but they may be set to 64 if desired. If the values do not match
 what was used to compile the library, Bad Things(TM) will occur.
 
-The functions of primary interest in this module are:
+The function of primary interest in this module is:
 
-    `metis.part_graph_kway`
-    `metis.part_graph_recur`
+    `metis.part_graph`
 
-They are also the only objects export by "from metis import *".
+It is also the only object currently export by "from metis import *".
 Other objects in the module may be of interest to those looking to 
 mangle their graph datastructures into the required format. Examples
 of this include the `networkx_to_metis` and `adjlist_to_metis` functions.
-These are automatically called by the `part_graph_` functions, so there is
+These are automatically called by `part_graph`, so there is
 little need to call them manually.
 
 See http://bitbucket.org/kw/metis-python for updates and issue reporting.
@@ -57,7 +56,7 @@ try:
 except ImportError:
     networkx = None
 
-__all__ = ['part_graph_kway', 'part_graph_recur']
+__all__ = ['part_graph']
 
 # Sadly, METIS does not currently include any API call to determine
 # the correct datatypes. So we either have to guess, let the user tell
@@ -133,8 +132,8 @@ class _bitfield(ctypes.c_int32):
     def __and__(self, other):
         assert isinstance(other, self.__class__)
         return self.__class__(self.value & other.value)
-    def __xor__(self):
-        assert isinstance(other, self.__class__)
+    def __xor__(self, other):
+        assert isinstance(other, (int, self.__class__))
         return self.__class__(self.value ^ other.value)
     def __not__(self):
         return self.__class__(~self.value)
@@ -243,6 +242,7 @@ class mdbglvl_et(_bitfield):
     METIS_DBG_CONNINFO   = 128     #/*!< Show info on minimization of subdomain connectivity */
     METIS_DBG_CONTIGINFO = 256     #/*!< Show info on elimination of connected components */ 
     METIS_DBG_MEMORY     = 2048    #/*!< Show info related to wspace allocation */
+    METIS_DBG_ALL        = sum(2**i for i in range(9)+[11])
 
 class mobjtype_et(_enum):
     METIS_OBJTYPE_DEFAULT = -1
@@ -537,6 +537,7 @@ def adjlist_to_metis(adjlist, nodew=None, nodesz=None):
     xadj = (idx_t*(n+1))()
     adjncy = (idx_t*m2)()
     adjwgt = (idx_t*m2)()
+    seen_adjwgt = False # Don't use adjwgt unless we've seen any
 
     ncon = idx_t(1)
     if nodew:
@@ -559,10 +560,14 @@ def adjlist_to_metis(adjlist, nodew=None, nodesz=None):
         for j in adj:
             try:
                 adjncy[e], adjwgt[e] = j
+                seen_adjwgt = True
             except TypeError:
                 adjncy[e], adjwgt[e] = j, 1
             e += 1        
         xadj[i+1] = e
+
+    if not seen_adjwgt:
+        adjwgt = None
 
     return METIS_Graph(idx_t(n), ncon, xadj, adjncy, vwgt, vsize, adjwgt)
 
@@ -578,11 +583,33 @@ def _METIS_SetDefaultOptions(optarray):
 @_wrapdll(P(idx_t), P(idx_t), P(idx_t), P(idx_t),
     P(idx_t), P(idx_t), P(idx_t), P(idx_t), P(real_t),
     P(real_t), P(idx_t), P(idx_t), P(idx_t))
-def _METIS_PartGraphKway(graph, nparts=2, 
-    tpwgts=None, ubvec=None, **opts):
+def _METIS_PartGraphKway(nvtxs, ncon, xadj, adjncy, vwgt, vsize, 
+                adjwgt, nparts, tpwgts, ubvec, options, objval, part):
     """
-    Perform k-way partitioning. 
-    Returns a 2-tuple `(part, objval)`, where `part` is a list of
+    Called by `part_graph`
+    """
+    return _METIS_PartGraphKway.call(nvtxs, ncon, xadj, adjncy, vwgt, vsize, 
+                adjwgt, nparts, tpwgts, ubvec, options, objval, part)
+
+@_wrapdll(P(idx_t), P(idx_t), P(idx_t), P(idx_t),
+    P(idx_t), P(idx_t), P(idx_t), P(idx_t), P(real_t),
+    P(real_t), P(idx_t), P(idx_t), P(idx_t))
+def _METIS_PartGraphRecursive(nvtxs, ncon, xadj, adjncy, vwgt, vsize, 
+                adjwgt, nparts, tpwgts, ubvec, options, objval, part):
+    """
+    Called by `part_graph` 
+    """
+    return _METIS_PartGraphRecursive.call(nvtxs, ncon, xadj, adjncy, vwgt, vsize, 
+                adjwgt, nparts, tpwgts, ubvec, options, objval, part)
+
+### End METIS wrappers. ###
+
+def part_graph(graph, nparts=2, 
+    tpwgts=None, ubvec=None, recursive=False, **opts):
+    """
+    Perform graph partitioning using k-way or recursive methods.
+
+    Returns a 2-tuple `(objval, parts)`, where `parts` is a list of
     partition indices corresponding and `objval` is the value of 
     the objective function that was minimized (either the edge cuts
     or the total volume).
@@ -610,7 +637,8 @@ def _METIS_PartGraphKway(graph, nparts=2,
     correct type (`metis.real_t`). 
 
     Any additional METIS options may be specified as keyword parameters.
-    For this function, the appropriate options are:
+
+    For k-way clustering, the appropriate options are:
 
        objtype   = 'cut' or 'vol' 
        ctype     = 'rm' or 'shem' 
@@ -625,75 +653,7 @@ def _METIS_PartGraphKway(graph, nparts=2,
        numbering = 0 (C-style) or 1 (Fortran-style) indices
        dbglvl    = Debug flag bitfield
 
-    See the METIS manual for specifics. 
-    """
-    options = METIS_Options(**opts)
-    if networkx and isinstance(graph, networkx.Graph):
-        graph = networkx_to_metis(graph)
-    elif isinstance(graph, (list,tuple)):
-        nodesz = opts.pop('nodesz', None)
-        nodew  = opts.pop('nodew', None)
-        graph = adjlist_to_metis(graph, nodew, nodesz)
-    elif isinstance(graph, dict):
-        # Check if this has METIS_Graph fields or an adjlist
-        if 'nvtxs' in graph:
-            graph = METIS_Graph(**graph)
-        elif 'adjlist' in graph:
-            graph = adlist_to_metis(**graph)
-
-    if tpwgts and not isinstance(tpwgts, ctypes.Array):
-        tpwgts = (real_t*len(tpwgts))(*tpwgts)
-    if ubvec and not isinstance(ubvec, ctypes.Array):
-        ubvec = (real_t*len(ubvect))(*ubvec)
-    nparts_var = idx_t(nparts)
-
-    objval = idx_t()
-    partition = (idx_t*graph.nvtxs.value)()
-
-    _METIS_PartGraphKway.call(
-        byref(graph.nvtxs), byref(graph.ncon), graph.xadj,
-        graph.adjncy, graph.vwgt, graph.vsize, graph.adjwgt,
-        byref(nparts_var), tpwgts, ubvec, options.array, 
-        byref(objval), partition)
-
-    return list(partition), objval.value
-
-@_wrapdll(P(idx_t), P(idx_t), P(idx_t), P(idx_t),
-    P(idx_t), P(idx_t), P(idx_t), P(idx_t), P(real_t),
-    P(real_t), P(idx_t), P(idx_t), P(idx_t))
-def _METIS_PartGraphRecursive(graph, nparts=2, 
-    tpwgts=None, ubvec=None, **opts):
-    """
-    Perform recursive partitioning. 
-    Returns a 2-tuple `(part, objval)`, where `part` is a list of
-    partition indices corresponding and `objval` is the value of 
-    the objective function that was minimized (either the edge cuts
-    or the total volume).
-
-    `graph` may be a NetworkX graph, an adjacency list, or a METIS_Graph 
-    named tuple. To use the named tuple approach, you'll need to
-    read the METIS manual for the meanings of the fields.
-
-    See `networkx_to_metis` for help and details on how the
-    graph is converted and how node/edge weights and sizes can
-    be specified.
-
-    See `adjlist_to_metis` for information on the use of adjacency lists.
-    The extra `nodew` and `nodesz` options of that function may be given 
-    directly to this function and will be forwarded to the converter. 
-    Alternatively, a dictionary can be provided as `graph` and its items
-    will be passed as keyword arguments.
-
-    `nparts` is the target number of partitions. You might get fewer.
-
-    You probably won't need to specify `tpwgts` and `ubvec`, but if 
-    you do, you'll read the METIS manual to see what they are. Any
-    sequence type with floats may be provided so long as the number of
-    elements is correct. If a ctypes Array is provided, it must be the
-    correct type (`metis.real_t`). 
-
-    Any additional METIS options may be specified as keyword parameters.
-    For this function, the appropriate options are:
+    For recursive clustering, the appropraite options are:
 
        ctype     = 'rm' or 'shem' 
        iptype    = 'grow', 'random', 'edge', 'node'
@@ -705,8 +665,9 @@ def _METIS_PartGraphRecursive(graph, nparts=2,
        numbering = 0 (C-style) or 1 (Fortran-style) indices
        dbglvl    = Debug flag bitfield
 
-    See the METIS manual for specifics. 
+    See the METIS manual for specific meaning of each option.
     """
+
     options = METIS_Options(**opts)
     if networkx and isinstance(graph, networkx.Graph):
         graph = networkx_to_metis(graph)
@@ -730,18 +691,42 @@ def _METIS_PartGraphRecursive(graph, nparts=2,
     objval = idx_t()
     partition = (idx_t*graph.nvtxs.value)()
 
-    _METIS_PartGraphRecursive.call(
-        byref(graph.nvtxs), byref(graph.ncon), graph.xadj,
-        graph.adjncy, graph.vwgt, graph.vsize, graph.adjwgt,
-        byref(nparts_var), tpwgts, ubvec, options.array, 
-        byref(objval), partition)
+    args = (byref(graph.nvtxs), byref(graph.ncon), graph.xadj,
+            graph.adjncy, graph.vwgt, graph.vsize, graph.adjwgt,
+            byref(nparts_var), tpwgts, ubvec, options.array, 
+            byref(objval), partition)
+    if recursive:
+        _METIS_PartGraphRecursive(*args)
+    else:
+        _METIS_PartGraphKway(*args)
+    
+    return objval.value, list(partition)
 
-    return list(partition), objval.value
+def test():
+    adjlist = [[1, 2, 3, 4], [0], [0], [0], [0, 5], [4, 6], [5, 7, 13], 
+                [8, 6], [7], [10, 11, 12], [9], [9], [9], [6, 14], [13, 15],
+                [14, 16, 17, 18], [15], [15], [15]] 
+    print "Testing k-way cut"
+    cuts, parts = part_graph(adjlist, 3, recursive=False, dbglvl=METIS_DBG_ALL)
+    assert cuts == 2
+    assert set(parts) == set([0,1,2])
 
-part_graph_kway = _METIS_PartGraphKway
+    print "Testing recursive cut"
+    cuts, parts = part_graph(adjlist, 3, recursive=True, dbglvl=METIS_DBG_ALL)
+    assert cuts <= 3
+    assert set(parts) == set([0,1,2])
 
-part_graph_recur = _METIS_PartGraphRecursive
+    if networkx:
+        print "Testing with NetworkX"
+        G = networkx.Graph()
+        G.add_star([0,1,2,3,4])
+        G.add_path([4,5,6,7,8])
+        G.add_star([9,10,11,12])
+        G.add_path([6,13,14,15])
+        G.add_star([15,16,17,18])
+        cuts, parts = part_graph(adjlist, 3)
+        assert cuts == 2
+        assert set(parts) == set([0,1,2])
 
-### End METIS wrappers. ###
-
+    print "METIS appears to be working."
 
