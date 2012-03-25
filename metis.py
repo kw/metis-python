@@ -457,13 +457,18 @@ def _wrapdll(*argtypes, **kw):
             name = f.__name__[1:]
         else:
             name = f.__name__
-        wrapped_func = getattr(_dll, name)        
-        wrapped_func.argtypes = argtypes
-        res = kw.pop('res', rstatus_et)
-        wrapped_func.restype = res
-        err = kw.pop('err', _result_errcheck)
-        wrapped_func.errcheck = err
-        f.call = wrapped_func
+        if _dll:
+            wrapped_func = getattr(_dll, name)        
+            wrapped_func.argtypes = argtypes
+            res = kw.pop('res', rstatus_et)
+            wrapped_func.restype = res
+            err = kw.pop('err', _result_errcheck)
+            wrapped_func.errcheck = err
+            f.call = wrapped_func
+        else:
+            def nodll(*args, **kw):
+                raise NotImplemented, "No METIS DLL"
+            f.call = nodll
         return f
     return dowrap
 
@@ -823,4 +828,6 @@ def test():
 
     print "METIS appears to be working."    
 
+if __name__ == '__main__':
+    test()
 
