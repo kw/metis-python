@@ -302,7 +302,7 @@ class mdbglvl_et(_bitfield):
     METIS_DBG_CONNINFO   = 128     #/*!< Show info on minimization of subdomain connectivity */
     METIS_DBG_CONTIGINFO = 256     #/*!< Show info on elimination of connected components */ 
     METIS_DBG_MEMORY     = 2048    #/*!< Show info related to wspace allocation */
-    METIS_DBG_ALL        = sum(2**i for i in range(9)+[11])
+    METIS_DBG_ALL        = sum(2**i for i in list(range(9))+[11])
 
 class mobjtype_et(_enum):
     METIS_OBJTYPE_DEFAULT = -1
@@ -376,7 +376,7 @@ class METIS_Options(object):
         return moptions_et._by_name_short.keys()
 
     def __getitem__(self, opt):        
-        if isinstance(opt, basestring):
+        if isinstance(opt, str):
             opt = moptions_et.fromname(opt)
         val = self.array[opt.value]   
         if opt in _opt_types:
@@ -386,9 +386,9 @@ class METIS_Options(object):
         return val
 
     def __setitem__(self, opt, val):
-        if isinstance(opt, basestring):
+        if isinstance(opt, str):
             opt = moptions_et.fromname(opt)
-        if isinstance(val, basestring) and opt in _opt_types:
+        if isinstance(val, str) and opt in _opt_types:
             val = _opt_types[opt].fromname(val)
         try:
             self.array[opt.value] = val
@@ -467,7 +467,7 @@ def _wrapdll(*argtypes, **kw):
             f.call = wrapped_func
         else:
             def nodll(*args, **kw):
-                raise NotImplemented, "No METIS DLL"
+                raise NotImplemented("No METIS DLL")
             f.call = nodll
         return f
     return dowrap
@@ -546,7 +546,7 @@ def networkx_to_metis(G):
         adjwgt = None
 
     if nodew:
-        if isinstance(nodew, basestring):
+        if isinstance(nodew, str):
             nodew = [nodew]            
         nc = len(nodew)
         ncon = idx_t(nc)
@@ -575,7 +575,7 @@ def networkx_to_metis(G):
             except TypeError:
                 raise TypeError("Node sizes must be integers")
 
-        for j, attr in H.edge[i].iteritems():
+        for j, attr in H.edge[i].items():
             adjncy[e] = j            
             if edgew:
                 try:
@@ -809,24 +809,24 @@ def example_networkx():
 def test():
     adjlist = example_adjlist()
 
-    print "Testing k-way cut"
+    print("Testing k-way cut")
     cuts, parts = part_graph(adjlist, 3, recursive=False, dbglvl=METIS_DBG_ALL)
     assert cuts == 2
     assert set(parts) == set([0,1,2])
 
-    print "Testing recursive cut"
+    print("Testing recursive cut")
     cuts, parts = part_graph(adjlist, 3, recursive=True, dbglvl=METIS_DBG_ALL)
     assert cuts == 2
     assert set(parts) == set([0,1,2])
 
     if networkx:
-        print "Testing with NetworkX"
+        print("Testing with NetworkX")
         G = example_networkx()
         cuts, parts = part_graph(G, 3)
         assert cuts == 2
         assert set(parts) == set([0,1,2])
 
-    print "METIS appears to be working."    
+    print("METIS appears to be working.")
 
 if __name__ == '__main__':
     test()

@@ -12,3 +12,7 @@ NetworkX_ is recommended for representing graphs for use with this wrapper,
 but it isn't required. Simple adjacency lists are supported as well.
 
 .. _NetworkX: http://networkx.lanl.gov/
+
+Please see the full documentation_ for examples.
+
+.. _documentation: http://metis.readthedocs.org

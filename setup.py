@@ -45,7 +45,7 @@ setup(
     py_modules=['metis'],
     license='MIT',
     description="METIS wrapper using ctypes",    
-    long_description= metis.__doc__,
+    long_description= open('README.rst').read(),
     cmdclass={'sdist': sdist_hg},
     classifiers = [
         'Development Status :: 3 - Alpha',
