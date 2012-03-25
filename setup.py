@@ -34,9 +34,6 @@ class sdist_hg(sdist):
 
 
 import metis
-readmefile = open('README.rst', 'wt')
-readmefile.write(metis.__doc__)
-readmefile.close()
 
 setup(
     name='metis',
