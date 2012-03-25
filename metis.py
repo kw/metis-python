@@ -50,18 +50,20 @@ METIS 4 will not work.
 This wrapper uses a few environment variables:
 
 .. envvar:: METIS_DLL
-This wrapper uses Python's ctypes module to interface with the METIS
-shared library. If it is unable to automatically locate the library, you
-may specify the full path to the library file in this environment variable.
+
+    This wrapper uses Python's ctypes module to interface with the METIS
+    shared library. If it is unable to automatically locate the library, you
+    may specify the full path to the library file in this environment variable.
 
 .. envvar:: METIS_IDXTYPEWIDTH
 .. envvar:: METIS_REALTYPEWIDTH
-The sizes of the :c:type:`idx_t` and :c:type:`real_t` types are not
-easily determinable at runtime, so they can be provided with these 
-environment variables. The default value for each of these (at both compile 
-time and in this library) is 32, but they may be set to 64 if desired. If 
-the values do not match what was used to compile the library, Bad Things(TM) 
-will occur.
+
+    The sizes of the :c:type:`idx_t` and :c:type:`real_t` types are not
+    easily determinable at runtime, so they can be provided with these 
+    environment variables. The default value for each of these (at both compile 
+    time and in this library) is 32, but they may be set to 64 if desired. If 
+    the values do not match what was used to compile the library, Bad Things(TM) 
+    will occur.
 
 Example
 =======
