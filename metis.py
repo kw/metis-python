@@ -1,48 +1,106 @@
 """
+METIS for Python
+================
+
 Wrapper for the METIS library for partitioning graphs (and other stuff).
 
 This library is unrelated to PyMetis, except that they wrap the same library.
 PyMetis is a Boost Python extension, while this library is pure python and will
 run under PyPy and interpreters with similarly compatible ctypes libraries.
 
-METIS itself is not included with this wrapper. Get it here:
-   http://glaros.dtc.umn.edu/gkhome/views/metis
+NetworkX_ is recommended for representing graphs for use with this wrapper,
+but it isn't required. Simple adjacency lists are supported as well.
+
+.. _NetworkX: http://networkx.lanl.gov/
+
+The function of primary interest in this module is :func:`part_graph`.
+
+Other objects in the module may be of interest to those looking to 
+mangle their graph datastructures into the required format. Examples
+of this include the :func:`networkx_to_metis` and :func:`adjlist_to_metis` functions.
+These are automatically called by :func:`part_graph`, so there is
+little need to call them manually.
+
+See the BitBucket repository_  for updates and issue reporting.
+
+.. _repository: http://bitbucket.org/kw/metis-python
+
+Installation
+============
+
+It's on PyPI, so installation should be as easy as::
+
+    pip install metis
+          -or-
+    easy_install metis
+
+METIS itself is not included with this wrapper. Get it here_.
+
+.. _here: http://glaros.dtc.umn.edu/gkhome/views/metis
 
 Note that the shared library is needed, and isn't enabled by default
-by the configuration process. Turn it on by issuing:
-    
+by the configuration process. Turn it on by issuing::
+
     make config shared=1
 
 Your operating system's package manager might know about METIS,
 but this wrapper was designed for use with METIS 5. Packages with
 METIS 4 will not work.
 
+This wrapper uses a few environment variables:
+
+.. envvar:: METIS_DLL
 This wrapper uses Python's ctypes module to interface with the METIS
 shared library. If it is unable to automatically locate the library, you
-may specify the full path to the library file in the METIS_DLL environment
-variable.
+may specify the full path to the library file in this environment variable.
 
-Additionally, there are a few compile options that you may need to tell
-the wrapper about. The sizes of the "idx_t" and "real_t" types are not
-easily determinable at runtime, so they can be provided with the 
-environment variables METIS_IDXTYPEWIDTH and METIS_REALTYPEWIDTH.
-The default value for each of these (at both compile and in this library)
-is 32, but they may be set to 64 if desired. If the values do not match
-what was used to compile the library, Bad Things(TM) will occur.
+.. envvar:: METIS_IDXTYPEWIDTH
+.. envvar:: METIS_REALTYPEWIDTH
+The sizes of the :c:type:`idx_t` and :c:type:`real_t` types are not
+easily determinable at runtime, so they can be provided with these 
+environment variables. The default value for each of these (at both compile 
+time and in this library) is 32, but they may be set to 64 if desired. If 
+the values do not match what was used to compile the library, Bad Things(TM) 
+will occur.
 
-The function of primary interest in this module is:
+Example
+=======
 
-    `metis.part_graph`
+    >>> import networkx as nx
+    >>> import metis 
+    >>> G = metis.example_networkx()
+    >>> (edgecuts, parts) = metis.part_graph(G, 3)
+    >>> colors = ['red','blue','green']
+    >>> for i, p in enumerate(parts):
+    ...     G.node[i]['color'] = colors[p]
+    ... 
+    >>> nx.write_dot(G, 'example.dot') # Requires pydot or pygraphviz
 
-It is also the only object currently export by "from metis import *".
-Other objects in the module may be of interest to those looking to 
-mangle their graph datastructures into the required format. Examples
-of this include the `networkx_to_metis` and `adjlist_to_metis` functions.
-These are automatically called by `part_graph`, so there is
-little need to call them manually.
+.. graphviz:: example.dot
 
-See http://bitbucket.org/kw/metis-python for updates and issue reporting.
 """
+# Copyright (c) 2012 Ken Watford
+#
+# Permission is hereby granted, free of charge, to any person 
+# obtaining a copy of this software and associated documentation 
+# files (the "Software"), to deal in the Software without 
+# restriction, including without limitation the rights to use, 
+# copy, modify, merge, publish, distribute, sublicense, and/or 
+# sell copies of the Software, and to permit persons to whom the 
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be 
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES 
+# OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR 
+# ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF 
+# CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION 
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# tl;dr - MIT license.
 
 __version__ = '0.1a'
 
@@ -56,7 +114,7 @@ try:
 except ImportError:
     networkx = None
 
-__all__ = ['part_graph']
+__all__ = ['part_graph', 'networkx_to_metis', 'adjlist_to_metis']
 
 # Sadly, METIS does not currently include any API call to determine
 # the correct datatypes. So we either have to guess, let the user tell
@@ -423,9 +481,9 @@ def _result_errcheck(result, func, args):
     This is the default error checker when using _wrapdll
     """
     if result != METIS_OK:
-        if error == METIS_ERROR_INPUT: raise METIS_InputError
-        if error == METIS_ERROR_MEMORY: raise METIS_MemoryError
-        if error == METIS_ERROR: raise METIS_OtherError
+        if result == METIS_ERROR_INPUT: raise METIS_InputError
+        if result == METIS_ERROR_MEMORY: raise METIS_MemoryError
+        if result == METIS_ERROR: raise METIS_OtherError
         raise RuntimeError("Error raising error: Bad error.") # lolwut
     return result
 
@@ -435,19 +493,32 @@ METIS_Graph = namedtuple('METIS_Graph',
     'nvtxs ncon xadj adjncy vwgt vsize adjwgt')
 
 def networkx_to_metis(G):
-    """ Convert NetworkX graph into something METIS can consume
+    """
+    Convert NetworkX graph into something METIS can consume
     The graph may specify weights and sizes using the following
     graph attributes:
 
-      edge_weight_attr
-      node_weight_attr
-      node_size_attr
+    * ``edge_weight_attr``
+    * ``node_weight_attr`` (multiple names allowed)
+    * ``node_size_attr``
+
+    For example::
+
+        >>> G.edge[0][1]['weight'] = 3
+        >>> G.node[0]['quality'] = 5
+        >>> G.node[0]['specialness'] = 8
+        >>> G.graph['edge_weight_attr'] = 'weight'
+        >>> G.graph['node_weight_attr'] = ['quality', 'specialness']
 
     If node_weight_attr is a list instead of a string, then multiple
     node weight labels can be provided. 
 
-    All weights must be integer values. If a attr label is specified but 
+    All weights must be integer values. If an attr label is specified but 
     a node/edge is missing that attribute, it defaults to 1.
+
+    If a graph attribute is not provided, no defaut is used. That is, if
+    ``edge_weight_attr`` is not set, then ``'weight'`` is not used as the
+    default, and the graph will appear unweighted to METIS.
     """
     n = G.number_of_nodes()
     m = G.number_of_edges()
@@ -514,20 +585,18 @@ def adjlist_to_metis(adjlist, nodew=None, nodesz=None):
     Rudimentary adjacency list converter.
     Primarily of use if you don't have or don't want to use NetworkX.
 
-    `adjlist` is a list of tuples. Each list element represents a node or vertex
-    in the graph. Each item in the tuples represents an edge. These items may be 
-    single integers representing neighbor index, or they may be an (index, weight)
-    tuple if you want weighted edges. Default weight is 1 for missing weights.
-
-    The graph must be undirected, and each edge must be represented twice (once for
-    each node). The weights should be identical, if provided.
-
-    `nodew` is a list of node weights, and must be the same size as `adjlist` if given.
-    If desired, the elements of `nodew` may be tuples of the same size (>= 1) to provided
-    multiple weights for each node. 
-
-    `nodesz` is a list of node sizes. These are relevant when doing volume-based
-    partitioning. 
+    :param adjlist: A list of tuples. Each list element represents a node or vertex
+      in the graph. Each item in the tuples represents an edge. These items may be 
+      single integers representing neighbor index, or they may be an (index, weight)
+      tuple if you want weighted edges. Default weight is 1 for missing weights.
+      
+      The graph must be undirected, and each edge must be represented twice (once for
+      each node). The weights should be identical, if provided.
+    :param nodew: is a list of node weights, and must be the same size as `adjlist` if given.
+      If desired, the elements of `nodew` may be tuples of the same size (>= 1) to provided
+      multiple weights for each node. 
+    :param nodesz: is a list of node sizes. These are relevant when doing volume-based
+      partitioning. 
 
     Note that all weights and sizes must be non-negative integers.
     """
@@ -614,56 +683,64 @@ def part_graph(graph, nparts=2,
     the objective function that was minimized (either the edge cuts
     or the total volume).
 
-    `graph` may be a NetworkX graph, an adjacency list, or a METIS_Graph 
-    named tuple. To use the named tuple approach, you'll need to
-    read the METIS manual for the meanings of the fields.
+    :param graph: may be a NetworkX graph, an adjacency list, or a :class:`METIS_Graph`
+      named tuple. To use the named tuple approach, you'll need to
+      read the METIS manual for the meanings of the fields.
+  
+      See :func:`networkx_to_metis` for help and details on how the
+      graph is converted and how node/edge weights and sizes can
+      be specified.
+  
+      See :func:`adjlist_to_metis` for information on the use of adjacency lists.
+      The extra ``nodew`` and ``nodesz`` keyword arguments of that function may be given 
+      directly to this function and will be forwarded to the converter. 
+      Alternatively, a dictionary can be provided as ``graph`` and its items
+      will be passed as keyword arguments.
+    :param nparts: The target number of partitions. You might get fewer.
+    :param tpwgts: Target partition weights. For each partition, there should
+      be one (float) weight for each node constraint. That is, if `nparts` is 3 and 
+      each node of the graph has two weights, then tpwgts might look like this::
+  
+        [(0.5, 0.1), (0.25, 0.8), (0.25, 0.1)]
 
-    See `networkx_to_metis` for help and details on how the
-    graph is converted and how node/edge weights and sizes can
-    be specified.
+      This list may be provided flattened. The internal tuples are for convenience.
+      The partition weights for each constraint must sum to 1. 
+    :param ubvec: The load imalance tolerance for each node constraint. Should be
+      a list of floating point values each greater than 1.
 
-    See `adjlist_to_metis` for information on the use of adjacency lists.
-    The extra `nodew` and `nodesz` options of that function may be given 
-    directly to this function and will be forwarded to the converter. 
-    Alternatively, a dictionary can be provided as `graph` and its items
-    will be passed as keyword arguments.
-
-    `nparts` is the target number of partitions. You might get fewer.
-
-    You probably won't need to specify `tpwgts` and `ubvec`, but if 
-    you do, you'll read the METIS manual to see what they are. Any
-    sequence type with floats may be provided so long as the number of
-    elements is correct. If a ctypes Array is provided, it must be the
-    correct type (`metis.real_t`). 
+    :param recursive: Determines whether the partitioning should be done by 
+      direct k-way cuts or by a series of recursive cuts. These correspond to 
+      :c:func:`METIS_PartGraphKway` and :c:func:`METIS_PartGraphRecursive` in
+      METIS's C API.
 
     Any additional METIS options may be specified as keyword parameters.
 
-    For k-way clustering, the appropriate options are:
+    For k-way clustering, the appropriate options are::
 
-       objtype   = 'cut' or 'vol' 
-       ctype     = 'rm' or 'shem' 
-       iptype    = 'grow', 'random', 'edge', 'node'
-       rtype     = 'fm', 'greedy', 'sep2sided', 'sep1sided'
-       ncuts     = integer, number of cut attempts (default = 1)
-       niter     = integer, number of iterations (default = 10)
-       ufactor   = integer, maximum load imbalance of (1+x)/1000
-       minconn   = bool, minimize degree of subdomain graph
-       contig    = bool, force contiguous partitions
-       seed      = integer, RNG seed
-       numbering = 0 (C-style) or 1 (Fortran-style) indices
-       dbglvl    = Debug flag bitfield
+        objtype   = 'cut' or 'vol' 
+        ctype     = 'rm' or 'shem' 
+        iptype    = 'grow', 'random', 'edge', 'node'
+        rtype     = 'fm', 'greedy', 'sep2sided', 'sep1sided'
+        ncuts     = integer, number of cut attempts (default = 1)
+        niter     = integer, number of iterations (default = 10)
+        ufactor   = integer, maximum load imbalance of (1+x)/1000
+        minconn   = bool, minimize degree of subdomain graph
+        contig    = bool, force contiguous partitions
+        seed      = integer, RNG seed
+        numbering = 0 (C-style) or 1 (Fortran-style) indices
+        dbglvl    = Debug flag bitfield
 
-    For recursive clustering, the appropraite options are:
+    For recursive clustering, the appropraite options are::
 
-       ctype     = 'rm' or 'shem' 
-       iptype    = 'grow', 'random', 'edge', 'node'
-       rtype     = 'fm', 'greedy', 'sep2sided', 'sep1sided'
-       ncuts     = integer, number of cut attempts (default = 1)
-       niter     = integer, number of iterations (default = 10)
-       ufactor   = integer, maximum load imbalance of (1+x)/1000
-       seed      = integer, RNG seed
-       numbering = 0 (C-style) or 1 (Fortran-style) indices
-       dbglvl    = Debug flag bitfield
+        ctype     = 'rm' or 'shem' 
+        iptype    = 'grow', 'random', 'edge', 'node'
+        rtype     = 'fm', 'greedy', 'sep2sided', 'sep1sided'
+        ncuts     = integer, number of cut attempts (default = 1)
+        niter     = integer, number of iterations (default = 10)
+        ufactor   = integer, maximum load imbalance of (1+x)/1000
+        seed      = integer, RNG seed
+        numbering = 0 (C-style) or 1 (Fortran-style) indices
+        dbglvl    = Debug flag bitfield
 
     See the METIS manual for specific meaning of each option.
     """
@@ -683,9 +760,15 @@ def part_graph(graph, nparts=2,
             graph = adlist_to_metis(**graph)
 
     if tpwgts and not isinstance(tpwgts, ctypes.Array):
+        if isinstance(tpwgts[0], (tuple, list)):
+            tpwgts = reduce(op.add, tpwgts)   
         tpwgts = (real_t*len(tpwgts))(*tpwgts)
     if ubvec and not isinstance(ubvec, ctypes.Array):
         ubvec = (real_t*len(ubvect))(*ubvec)
+
+    if tpwgts: assert len(tpgwgts) == nparts * graph.ncon
+    if ubvec: assert len(ubvec) == graph.ncon
+
     nparts_var = idx_t(nparts)
 
     objval = idx_t()
@@ -702,10 +785,23 @@ def part_graph(graph, nparts=2,
     
     return objval.value, list(partition)
 
+def example_adjlist():
+    return [[1, 2, 3, 4], [0], [0], [0], [0, 5], [4, 6], [13, 5, 7], 
+            [8, 6], [9, 10, 11, 12, 7], [8], [8], [8], [8], [14, 6], [13, 15],
+            [16, 17, 18, 14], [15], [15], [15]]
+
+def example_networkx():
+    G = networkx.Graph()
+    G.add_star([0,1,2,3,4])
+    G.add_path([4,5,6,7,8])
+    G.add_star([8,9,10,11,12])
+    G.add_path([6,13,14,15])
+    G.add_star([15,16,17,18])
+    return G
+
 def test():
-    adjlist = [[1, 2, 3, 4], [0], [0], [0], [0, 5], [4, 6], [5, 7, 13], 
-                [8, 6], [7], [10, 11, 12], [9], [9], [9], [6, 14], [13, 15],
-                [14, 16, 17, 18], [15], [15], [15]] 
+    adjlist = example_adjlist()
+
     print "Testing k-way cut"
     cuts, parts = part_graph(adjlist, 3, recursive=False, dbglvl=METIS_DBG_ALL)
     assert cuts == 2
@@ -713,20 +809,16 @@ def test():
 
     print "Testing recursive cut"
     cuts, parts = part_graph(adjlist, 3, recursive=True, dbglvl=METIS_DBG_ALL)
-    assert cuts <= 3
+    assert cuts == 2
     assert set(parts) == set([0,1,2])
 
     if networkx:
         print "Testing with NetworkX"
-        G = networkx.Graph()
-        G.add_star([0,1,2,3,4])
-        G.add_path([4,5,6,7,8])
-        G.add_star([9,10,11,12])
-        G.add_path([6,13,14,15])
-        G.add_star([15,16,17,18])
-        cuts, parts = part_graph(adjlist, 3)
+        G = example_networkx()
+        cuts, parts = part_graph(G, 3)
         assert cuts == 2
         assert set(parts) == set([0,1,2])
 
-    print "METIS appears to be working."
+    print "METIS appears to be working."    
+
 

@@ -6,7 +6,7 @@ from setuptools import setup
 from distutils.command.sdist import sdist
 from subprocess import Popen, PIPE
 
-from metis import __version__
+
 
 class sdist_hg(sdist):
     user_options = sdist.user_options + [
@@ -32,9 +32,15 @@ class sdist_hg(sdist):
             rev = "deadbeef"
         return rev
 
+
+import metis
+readmefile = open('README.rst', 'wt')
+readmefile.write(metis.__doc__)
+readmefile.close()
+
 setup(
     name='metis',
-    version=__version__,
+    version=metis.__version__,
     author="Ken Watford",
     author_email="kwatford@gmail.com",
     url="https://bitbucket.org/kw/metis-python",
@@ -42,7 +48,7 @@ setup(
     py_modules=['metis'],
     license='MIT',
     description="METIS wrapper using ctypes",    
-    long_description=open('README.txt').read(),
+    long_description= metis.__doc__,
     cmdclass={'sdist': sdist_hg},
     classifiers = [
         'Development Status :: 3 - Alpha',
