@@ -5,7 +5,7 @@ from setuptools import setup
 
 from distutils.command.sdist import sdist
 from subprocess import Popen, PIPE
-
+import os
 
 
 class sdist_hg(sdist):
@@ -33,6 +33,9 @@ class sdist_hg(sdist):
         return rev
 
 
+# prevent metis_dll check at setup time
+os.environ['METIS_DLL'] = 'SKIP'
+
 import metis
 
 setup(
@@ -44,7 +47,7 @@ setup(
     download_url="https://bitbucket.org/kw/metis-python/downloads",
     py_modules=['metis'],
     license='MIT',
-    description="METIS wrapper using ctypes",    
+    description="METIS wrapper using ctypes",
     long_description= open('README.rst').read(),
     cmdclass={'sdist': sdist_hg},
     classifiers = [

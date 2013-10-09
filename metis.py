@@ -416,7 +416,11 @@ if not _dll_filename:
         _dll_filename = _find_library('metis')
     except ImportError:
         pass
-if _dll_filename:
+if _dll_filename == 'SKIP':
+    warn('$METIS_DLL=SKIP, skipping DLL load. Nothing will work. '
+         'This is normal during install.', UserWarning, 2)
+    _dll = None
+elif _dll_filename:
     try:
         _dll = ctypes.cdll.LoadLibrary(_dll_filename)
     except:        
@@ -830,4 +834,3 @@ def test():
 
 if __name__ == '__main__':
     test()
-
