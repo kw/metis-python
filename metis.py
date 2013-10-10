@@ -15,7 +15,7 @@ but it isn't required. Simple adjacency lists are supported as well.
 
 The function of primary interest in this module is :func:`part_graph`.
 
-Other objects in the module may be of interest to those looking to 
+Other objects in the module may be of interest to those looking to
 mangle their graph datastructures into the required format. Examples
 of this include the :func:`networkx_to_metis` and :func:`adjlist_to_metis` functions.
 These are automatically called by :func:`part_graph`, so there is
@@ -59,23 +59,23 @@ This wrapper uses a few environment variables:
 .. envvar:: METIS_REALTYPEWIDTH
 
     The sizes of the :c:type:`idx_t` and :c:type:`real_t` types are not
-    easily determinable at runtime, so they can be provided with these 
-    environment variables. The default value for each of these (at both compile 
-    time and in this library) is 32, but they may be set to 64 if desired. If 
-    the values do not match what was used to compile the library, Bad Things(TM) 
+    easily determinable at runtime, so they can be provided with these
+    environment variables. The default value for each of these (at both compile
+    time and in this library) is 32, but they may be set to 64 if desired. If
+    the values do not match what was used to compile the library, Bad Things(TM)
     will occur.
 
 Example
 =======
 
     >>> import networkx as nx
-    >>> import metis 
+    >>> import metis
     >>> G = metis.example_networkx()
     >>> (edgecuts, parts) = metis.part_graph(G, 3)
     >>> colors = ['red','blue','green']
     >>> for i, p in enumerate(parts):
     ...     G.node[i]['color'] = colors[p]
-    ... 
+    ...
     >>> nx.write_dot(G, 'example.dot') # Requires pydot or pygraphviz
 
 .. graphviz:: example.dot
@@ -83,23 +83,23 @@ Example
 """
 # Copyright (c) 2012 Ken Watford
 #
-# Permission is hereby granted, free of charge, to any person 
-# obtaining a copy of this software and associated documentation 
-# files (the "Software"), to deal in the Software without 
-# restriction, including without limitation the rights to use, 
-# copy, modify, merge, publish, distribute, sublicense, and/or 
-# sell copies of the Software, and to permit persons to whom the 
+# Permission is hereby granted, free of charge, to any person
+# obtaining a copy of this software and associated documentation
+# files (the "Software"), to deal in the Software without
+# restriction, including without limitation the rights to use,
+# copy, modify, merge, publish, distribute, sublicense, and/or
+# sell copies of the Software, and to permit persons to whom the
 # Software is furnished to do so, subject to the following conditions:
 #
-# The above copyright notice and this permission notice shall be 
+# The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 #
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
-# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES 
-# OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
-# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR 
-# ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF 
-# CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+# OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR
+# ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+# CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 # tl;dr - MIT license.
@@ -164,7 +164,7 @@ class _enum(ctypes.c_int32):
             return by_value[self]
         else:
             return "UNKNOWN(0x%x)" % self.value
-    def shortname(self):        
+    def shortname(self):
         return self._by_value_short.get(self, 'unknown')
     @classmethod
     def fromname(cls, name):
@@ -173,7 +173,7 @@ class _enum(ctypes.c_int32):
         elif name in cls._by_name_short:
             return cls._by_name_short[name]
         else:
-            raise KeyError('Unknown name: %s' % name) 
+            raise KeyError('Unknown name: %s' % name)
     @classmethod
     def toname(cls, val):
         if val in self._by_value_short:
@@ -243,27 +243,28 @@ class moptions_et(_enum):
     METIS_OPTION_NITER     =  6
     METIS_OPTION_NCUTS     =  7
     METIS_OPTION_SEED      =  8
-    METIS_OPTION_MINCONN   =  9 
-    METIS_OPTION_CONTIG    = 10
-    METIS_OPTION_COMPRESS  = 11
-    METIS_OPTION_CCORDER   = 12 
-    METIS_OPTION_PFACTOR   = 13
-    METIS_OPTION_NSEPS     = 14
-    METIS_OPTION_UFACTOR   = 15
-    METIS_OPTION_NUMBERING = 16
+    METIS_OPTION_NO2HOP    =  9
+    METIS_OPTION_MINCONN   = 10
+    METIS_OPTION_CONTIG    = 11
+    METIS_OPTION_COMPRESS  = 12
+    METIS_OPTION_CCORDER   = 13
+    METIS_OPTION_PFACTOR   = 14
+    METIS_OPTION_NSEPS     = 15
+    METIS_OPTION_UFACTOR   = 16
+    METIS_OPTION_NUMBERING = 17
     #/* Used for command-line parameter purposes */
     METIS_OPTION_HELP      = 17
-    METIS_OPTION_TPWGTS    = 18 
+    METIS_OPTION_TPWGTS    = 18
     METIS_OPTION_NCOMMON   = 19
     METIS_OPTION_NOOUTPUT  = 20
-    METIS_OPTION_BALANCE   = 21 
+    METIS_OPTION_BALANCE   = 21
     METIS_OPTION_GTYPE     = 22
     METIS_OPTION_UBVEC     = 23
 
 class mptype_et(_enum):
     METIS_PTYPE_DEFAULT = -1
     METIS_PTYPE_RB   = 0
-    METIS_PTYPE_KWAY = 1              
+    METIS_PTYPE_KWAY = 1
 
 class mgtype_et(_enum):
     METIS_GTYPE_DEFAULT = -1
@@ -300,7 +301,7 @@ class mdbglvl_et(_bitfield):
     METIS_DBG_MOVEINFO   = 32      #/*!< Show info on vertex moves during refinement */
     METIS_DBG_SEPINFO    = 64      #/*!< Show info on vertex moves during sep refinement */
     METIS_DBG_CONNINFO   = 128     #/*!< Show info on minimization of subdomain connectivity */
-    METIS_DBG_CONTIGINFO = 256     #/*!< Show info on elimination of connected components */ 
+    METIS_DBG_CONTIGINFO = 256     #/*!< Show info on elimination of connected components */
     METIS_DBG_MEMORY     = 2048    #/*!< Show info related to wspace allocation */
     METIS_DBG_ALL        = sum(2**i for i in list(range(9))+[11])
 
@@ -356,11 +357,11 @@ _opt_types = {
     }
 
 class METIS_Options(object):
-    """ Represents the 'options' array used to represent all 
+    """ Represents the 'options' array used to represent all
     nearly all options that can be given to METIS functions.
     Will be used when extra keyword arguments are are used in wrappers.
 
-    Note that I spent way too much time on this. 
+    Note that I spent way too much time on this.
 
     """
     def __init__(self, options=None, **opts):
@@ -375,10 +376,10 @@ class METIS_Options(object):
     def keys(self):
         return moptions_et._by_name_short.keys()
 
-    def __getitem__(self, opt):        
+    def __getitem__(self, opt):
         if isinstance(opt, str):
             opt = moptions_et.fromname(opt)
-        val = self.array[opt.value]   
+        val = self.array[opt.value]
         if opt in _opt_types:
             val = _opt_types[opt](val)
             if isinstance(val, _enum):
@@ -405,7 +406,7 @@ class METIS_Options(object):
                 val = self[opt]
                 nondefaults.append('%s=%r' % (opt, val))
         return 'METIS_Options(' + ', '.join(nondefaults) + ')'
-   
+
 
 
 # Attempt to locate and load the appropriate shared library
@@ -423,7 +424,7 @@ if _dll_filename == 'SKIP':
 elif _dll_filename:
     try:
         _dll = ctypes.cdll.LoadLibrary(_dll_filename)
-    except:        
+    except:
         raise RuntimeError('Could not load METIS dll: %s' % _dll_filename)
 else:
     if os.environ.get('READTHEDOCS', None) == 'True':
@@ -443,7 +444,7 @@ def _wrapdll(*argtypes, **kw):
 
     If a `res` keyword argument is given, it represents the C-level
     function's expected return type. The default is `rstatus_et`
-    
+
     If an `err` keyword argument is given, it represents an error checker
     that should be run after low-level calls. The `_result_errcheck` and
     `_lastarg_errcheck` functions should be sufficient for most OpenCL
@@ -462,7 +463,7 @@ def _wrapdll(*argtypes, **kw):
         else:
             name = f.__name__
         if _dll:
-            wrapped_func = getattr(_dll, name)        
+            wrapped_func = getattr(_dll, name)
             wrapped_func.argtypes = argtypes
             res = kw.pop('res', rstatus_et)
             wrapped_func.restype = res
@@ -522,9 +523,9 @@ def networkx_to_metis(G):
         >>> G.graph['node_weight_attr'] = ['quality', 'specialness']
 
     If node_weight_attr is a list instead of a string, then multiple
-    node weight labels can be provided. 
+    node weight labels can be provided.
 
-    All weights must be integer values. If an attr label is specified but 
+    All weights must be integer values. If an attr label is specified but
     a node/edge is missing that attribute, it defaults to 1.
 
     If a graph attribute is not provided, no defaut is used. That is, if
@@ -534,7 +535,7 @@ def networkx_to_metis(G):
     n = G.number_of_nodes()
     m = G.number_of_edges()
     nvtxs = idx_t(n)
-    
+
     H = networkx.convert_node_labels_to_integers(G)
     xadj = (idx_t*(n+1))()
     adjncy = (idx_t*(2*m))()
@@ -551,10 +552,10 @@ def networkx_to_metis(G):
 
     if nodew:
         if isinstance(nodew, str):
-            nodew = [nodew]            
+            nodew = [nodew]
         nc = len(nodew)
         ncon = idx_t(nc)
-        vwgt = (idx_t*(n*len(nodew)))()                
+        vwgt = (idx_t*(n*len(nodew)))()
     else:
         ncon = idx_t(1)
         vwgt = None
@@ -568,7 +569,7 @@ def networkx_to_metis(G):
     xadj[0] = e = 0
     for i in H.node:
         for c,w in enumerate(nodew):
-            try:            
+            try:
                 vwgt[i*nc+c] = H.node[i].get(w, 1)
             except TypeError:
                 raise TypeError("Node weights must be integers" )
@@ -580,7 +581,7 @@ def networkx_to_metis(G):
                 raise TypeError("Node sizes must be integers")
 
         for j, attr in H.edge[i].items():
-            adjncy[e] = j            
+            adjncy[e] = j
             if edgew:
                 try:
                     adjwgt[e] = attr.get(edgew, 1)
@@ -588,7 +589,7 @@ def networkx_to_metis(G):
                     raise TypeError("Edge weights must be integers")
             e += 1
         xadj[i+1] = e
-    
+
     return METIS_Graph(nvtxs, ncon, xadj, adjncy, vwgt, vsize, adjwgt)
 
 def adjlist_to_metis(adjlist, nodew=None, nodesz=None):
@@ -597,22 +598,22 @@ def adjlist_to_metis(adjlist, nodew=None, nodesz=None):
     Primarily of use if you don't have or don't want to use NetworkX.
 
     :param adjlist: A list of tuples. Each list element represents a node or vertex
-      in the graph. Each item in the tuples represents an edge. These items may be 
+      in the graph. Each item in the tuples represents an edge. These items may be
       single integers representing neighbor index, or they may be an (index, weight)
       tuple if you want weighted edges. Default weight is 1 for missing weights.
-      
+
       The graph must be undirected, and each edge must be represented twice (once for
       each node). The weights should be identical, if provided.
     :param nodew: is a list of node weights, and must be the same size as `adjlist` if given.
       If desired, the elements of `nodew` may be tuples of the same size (>= 1) to provided
-      multiple weights for each node. 
+      multiple weights for each node.
     :param nodesz: is a list of node sizes. These are relevant when doing volume-based
-      partitioning. 
+      partitioning.
 
     Note that all weights and sizes must be non-negative integers.
     """
     n = len(adjlist)
-    m2 = sum(map(len, adjlist))    
+    m2 = sum(map(len, adjlist))
 
     xadj = (idx_t*(n+1))()
     adjncy = (idx_t*m2)()
@@ -643,7 +644,7 @@ def adjlist_to_metis(adjlist, nodew=None, nodesz=None):
                 seen_adjwgt = True
             except TypeError:
                 adjncy[e], adjwgt[e] = j, 1
-            e += 1        
+            e += 1
         xadj[i+1] = e
 
     if not seen_adjwgt:
@@ -663,64 +664,64 @@ def _METIS_SetDefaultOptions(optarray):
 @_wrapdll(P(idx_t), P(idx_t), P(idx_t), P(idx_t),
     P(idx_t), P(idx_t), P(idx_t), P(idx_t), P(real_t),
     P(real_t), P(idx_t), P(idx_t), P(idx_t))
-def _METIS_PartGraphKway(nvtxs, ncon, xadj, adjncy, vwgt, vsize, 
+def _METIS_PartGraphKway(nvtxs, ncon, xadj, adjncy, vwgt, vsize,
                 adjwgt, nparts, tpwgts, ubvec, options, objval, part):
     """
     Called by `part_graph`
     """
-    return _METIS_PartGraphKway.call(nvtxs, ncon, xadj, adjncy, vwgt, vsize, 
+    return _METIS_PartGraphKway.call(nvtxs, ncon, xadj, adjncy, vwgt, vsize,
                 adjwgt, nparts, tpwgts, ubvec, options, objval, part)
 
 @_wrapdll(P(idx_t), P(idx_t), P(idx_t), P(idx_t),
     P(idx_t), P(idx_t), P(idx_t), P(idx_t), P(real_t),
     P(real_t), P(idx_t), P(idx_t), P(idx_t))
-def _METIS_PartGraphRecursive(nvtxs, ncon, xadj, adjncy, vwgt, vsize, 
+def _METIS_PartGraphRecursive(nvtxs, ncon, xadj, adjncy, vwgt, vsize,
                 adjwgt, nparts, tpwgts, ubvec, options, objval, part):
     """
-    Called by `part_graph` 
+    Called by `part_graph`
     """
-    return _METIS_PartGraphRecursive.call(nvtxs, ncon, xadj, adjncy, vwgt, vsize, 
+    return _METIS_PartGraphRecursive.call(nvtxs, ncon, xadj, adjncy, vwgt, vsize,
                 adjwgt, nparts, tpwgts, ubvec, options, objval, part)
 
 ### End METIS wrappers. ###
 
-def part_graph(graph, nparts=2, 
+def part_graph(graph, nparts=2,
     tpwgts=None, ubvec=None, recursive=False, **opts):
     """
     Perform graph partitioning using k-way or recursive methods.
 
     Returns a 2-tuple `(objval, parts)`, where `parts` is a list of
-    partition indices corresponding and `objval` is the value of 
+    partition indices corresponding and `objval` is the value of
     the objective function that was minimized (either the edge cuts
     or the total volume).
 
     :param graph: may be a NetworkX graph, an adjacency list, or a :class:`METIS_Graph`
       named tuple. To use the named tuple approach, you'll need to
       read the METIS manual for the meanings of the fields.
-  
+
       See :func:`networkx_to_metis` for help and details on how the
       graph is converted and how node/edge weights and sizes can
       be specified.
-  
+
       See :func:`adjlist_to_metis` for information on the use of adjacency lists.
-      The extra ``nodew`` and ``nodesz`` keyword arguments of that function may be given 
-      directly to this function and will be forwarded to the converter. 
+      The extra ``nodew`` and ``nodesz`` keyword arguments of that function may be given
+      directly to this function and will be forwarded to the converter.
       Alternatively, a dictionary can be provided as ``graph`` and its items
       will be passed as keyword arguments.
     :param nparts: The target number of partitions. You might get fewer.
     :param tpwgts: Target partition weights. For each partition, there should
-      be one (float) weight for each node constraint. That is, if `nparts` is 3 and 
+      be one (float) weight for each node constraint. That is, if `nparts` is 3 and
       each node of the graph has two weights, then tpwgts might look like this::
-  
+
         [(0.5, 0.1), (0.25, 0.8), (0.25, 0.1)]
 
       This list may be provided flattened. The internal tuples are for convenience.
-      The partition weights for each constraint must sum to 1. 
+      The partition weights for each constraint must sum to 1.
     :param ubvec: The load imalance tolerance for each node constraint. Should be
       a list of floating point values each greater than 1.
 
-    :param recursive: Determines whether the partitioning should be done by 
-      direct k-way cuts or by a series of recursive cuts. These correspond to 
+    :param recursive: Determines whether the partitioning should be done by
+      direct k-way cuts or by a series of recursive cuts. These correspond to
       :c:func:`METIS_PartGraphKway` and :c:func:`METIS_PartGraphRecursive` in
       METIS's C API.
 
@@ -728,8 +729,8 @@ def part_graph(graph, nparts=2,
 
     For k-way clustering, the appropriate options are::
 
-        objtype   = 'cut' or 'vol' 
-        ctype     = 'rm' or 'shem' 
+        objtype   = 'cut' or 'vol'
+        ctype     = 'rm' or 'shem'
         iptype    = 'grow', 'random', 'edge', 'node'
         rtype     = 'fm', 'greedy', 'sep2sided', 'sep1sided'
         ncuts     = integer, number of cut attempts (default = 1)
@@ -743,7 +744,7 @@ def part_graph(graph, nparts=2,
 
     For recursive clustering, the appropraite options are::
 
-        ctype     = 'rm' or 'shem' 
+        ctype     = 'rm' or 'shem'
         iptype    = 'grow', 'random', 'edge', 'node'
         rtype     = 'fm', 'greedy', 'sep2sided', 'sep1sided'
         ncuts     = integer, number of cut attempts (default = 1)
@@ -772,7 +773,7 @@ def part_graph(graph, nparts=2,
 
     if tpwgts and not isinstance(tpwgts, ctypes.Array):
         if isinstance(tpwgts[0], (tuple, list)):
-            tpwgts = reduce(op.add, tpwgts)   
+            tpwgts = reduce(op.add, tpwgts)
         tpwgts = (real_t*len(tpwgts))(*tpwgts)
     if ubvec and not isinstance(ubvec, ctypes.Array):
         ubvec = (real_t*len(ubvect))(*ubvec)
@@ -787,17 +788,17 @@ def part_graph(graph, nparts=2,
 
     args = (byref(graph.nvtxs), byref(graph.ncon), graph.xadj,
             graph.adjncy, graph.vwgt, graph.vsize, graph.adjwgt,
-            byref(nparts_var), tpwgts, ubvec, options.array, 
+            byref(nparts_var), tpwgts, ubvec, options.array,
             byref(objval), partition)
     if recursive:
         _METIS_PartGraphRecursive(*args)
     else:
         _METIS_PartGraphKway(*args)
-    
+
     return objval.value, list(partition)
 
 def example_adjlist():
-    return [[1, 2, 3, 4], [0], [0], [0], [0, 5], [4, 6], [13, 5, 7], 
+    return [[1, 2, 3, 4], [0], [0], [0], [0, 5], [4, 6], [13, 5, 7],
             [8, 6], [9, 10, 11, 12, 7], [8], [8], [8], [8], [14, 6], [13, 15],
             [16, 17, 18, 14], [15], [15], [15]]
 
