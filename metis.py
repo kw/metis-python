@@ -622,7 +622,7 @@ def adjlist_to_metis(adjlist, nodew=None, nodesz=None):
 
     ncon = idx_t(1)
     if nodew:
-        if isinstance(nodew[0]):
+        if isinstance(nodew[0], int):
             vwgt = (idx_t*n)(*nodew)
         else: # Assume a list of them
             nw = len(nodew[0])
@@ -757,10 +757,9 @@ def part_graph(graph, nparts=2,
     See the METIS manual for specific meaning of each option.
     """
 
-    options = METIS_Options(**opts)
     if networkx and isinstance(graph, networkx.Graph):
         graph = networkx_to_metis(graph)
-    elif isinstance(graph, (list,tuple)):
+    elif isinstance(graph, list):
         nodesz = opts.pop('nodesz', None)
         nodew  = opts.pop('nodew', None)
         graph = adjlist_to_metis(graph, nodew, nodesz)
@@ -769,8 +768,9 @@ def part_graph(graph, nparts=2,
         if 'nvtxs' in graph:
             graph = METIS_Graph(**graph)
         elif 'adjlist' in graph:
-            graph = adlist_to_metis(**graph)
+            graph = adjlist_to_metis(**graph)
 
+    options = METIS_Options(**opts)
     if tpwgts and not isinstance(tpwgts, ctypes.Array):
         if isinstance(tpwgts[0], (tuple, list)):
             tpwgts = reduce(op.add, tpwgts)
