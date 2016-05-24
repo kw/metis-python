@@ -778,8 +778,8 @@ def part_graph(graph, nparts=2,
     if ubvec and not isinstance(ubvec, ctypes.Array):
         ubvec = (real_t*len(ubvect))(*ubvec)
 
-    if tpwgts: assert len(tpwgts) == nparts * graph.ncon
-    if ubvec: assert len(ubvec) == graph.ncon
+    if tpwgts: assert len(tpwgts) == nparts * graph.ncon.value
+    if ubvec: assert len(ubvec) == graph.ncon.value
 
     nparts_var = idx_t(nparts)
 
