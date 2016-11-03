@@ -776,7 +776,7 @@ def part_graph(graph, nparts=2,
             tpwgts = reduce(op.add, tpwgts)
         tpwgts = (real_t*len(tpwgts))(*tpwgts)
     if ubvec and not isinstance(ubvec, ctypes.Array):
-        ubvec = (real_t*len(ubvect))(*ubvec)
+        ubvec = (real_t*len(ubvec))(*ubvec)
 
     if tpwgts: assert len(tpwgts) == nparts * graph.ncon.value
     if ubvec: assert len(ubvec) == graph.ncon.value
