@@ -109,12 +109,16 @@ __version__ = '0.2a1'
 import ctypes
 from ctypes import POINTER as P, byref
 import os, sys, operator as op
+import sys
 from warnings import warn
 from collections import namedtuple
 try:
     import networkx
 except ImportError:
     networkx = None
+
+if sys.version_info >= (3, 0):
+    from functools import reduce
 
 __all__ = ['part_graph', 'networkx_to_metis', 'adjlist_to_metis']
 
