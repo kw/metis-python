@@ -104,7 +104,7 @@ Example
 #
 # tl;dr - MIT license.
 
-__version__ = '0.2a1'
+__version__ = '0.2a2'
 
 import ctypes
 from ctypes import POINTER as P, byref

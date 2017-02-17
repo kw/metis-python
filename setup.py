@@ -5,7 +5,7 @@ from subprocess import Popen, PIPE
 import os
 
 
-class sdist_hg(sdist):
+class sdist_git(sdist):
     user_options = sdist.user_options + [
             ('dev', None, "Add a dev marker")
             ]
@@ -22,10 +22,10 @@ class sdist_hg(sdist):
 
     def get_revision(self):
         try:
-            p = Popen(['hg', 'id', '-i'], stdout=PIPE)
+            p = Popen('git log -n 1 --pretty=format:%H'.split(), stdout=PIPE)
             rev = p.stdout.read().strip()
         except:
-            print("Could not determine hg revision.")
+            print("Could not determine git revision.")
             rev = "deadbeef"
         return rev
 
@@ -46,7 +46,7 @@ setup(
     license='MIT',
     description="METIS wrapper using ctypes",
     long_description= open('README.rst').read(),
-    cmdclass={'sdist': sdist_hg},
+    cmdclass={'sdist': sdist_git},
     classifiers = [
         'Development Status :: 3 - Alpha',
         'License :: OSI Approved :: MIT License',
