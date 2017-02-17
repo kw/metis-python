@@ -13,7 +13,7 @@ but it isn't required. Simple adjacency lists are supported as well.
 
 .. _NetworkX: http://networkx.lanl.gov/
 
-Please see the full documentation_ for examples or the BitBucket repository_ for bug reports
+Please see the full documentation_ for examples or the GitHub repository_ for bug reports
 
 .. _documentation: http://metis.readthedocs.org
-.. _repository: https://bitbucket.org/kw/metis-python
+.. _repository: https://github.com/kw/metis-python
