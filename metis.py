@@ -150,7 +150,7 @@ METIS_NOPTIONS = 40
 
 # The _enum and _bitfield base classes come from my PyCL project
 # They make enum constants a little more friendly.
-class _enum(ctypes.c_int32):
+class _enum(idx_t):
     # Base class for various enums
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -187,7 +187,7 @@ class _enum(ctypes.c_int32):
         else:
             raise KeyError
 
-class _bitfield(ctypes.c_int32):
+class _bitfield(idx_t):
     # Base class for bitfield values
     # Bitwise operations for combining flags are supported.
     def __or__(self, other):
